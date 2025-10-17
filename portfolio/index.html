@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Franz Ezra C. Baylosis – Portfolio</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <!-- Profile Pic -->
+  <div class="profile-pic">
+    <img src="franz.jpg" alt="Franz Ezra C. Baylosis" />
+  </div>
+
+  <!-- Name and Title -->
+  <h1>Franz Ezra C. Baylosis</h1>
+  <h2>BSCS-3 Student Athlete | UI/UX Enthusiast</h2>
+
+  <!-- Hire Me Button (Messenger) -->
+  <a href="https://m.me/franz.baylosis" target="_blank" class="btn">Hire Me</a>
+
+  <!-- About Me Section -->
+  <section>
+    <h3>About Me</h3>
+    <p>I’m a 3rd year Bachelor of Science in Computer Science student and a student athlete at De La Salle John Bosco College with a passion for building intuitive, user-focused interfaces through UI/UX design. Outside tech, I play volleyball and enjoy online games both sharpen my teamwork, strategy, and focus which I bring into every project.</p>
+  </section>
+
+  <!-- Skills Section -->
+  <section>
+    <h3>Skills</h3>
+    <div class="skills">
+      <div class="skill">UI/UX Design</div>
+      <div class="skill">Web Development</div>
+      <div class="skill">Mag mahal</div>
+      <div class="skill">Graphic Design</div>
+    </div>
+  </section>
+
+  <!-- Motivational Quote -->
+  <div class="quote">
+    “Dream big, work hard, and never stop believing in yourself.”
+  </div>
+
+  <!-- Contact Section -->
+  <section class="contact">
+    <h3>Contact Me</h3>
+    <p>📱 09934838019 | 📧 franzezrabaylosis2004@gmail.com |
+      <a href="https://www.facebook.com/Baylosisfranz" target="_blank">Facebook</a>
+    </p>
+  </section>
+
+  <footer>
+    © 2025 Franz Ezra C. Baylosis
+  </footer>
+
+  <!-- ======= MY GRADE (AUTO ONLY) ======= -->
+  <section id="my-grade" aria-label="My Grade">
+    <h3 class="grades-title">📊 MY GRADES</h3>
+
+    <p id="grade-status" class="grades-status">Fetching your grade…</p>
+
+    <div id="grade-result" class="grade-card" hidden>
+      <p><strong>Student ID:</strong> <span id="g-id"></span></p>
+      <p><strong>Last Name:</strong> <span id="g-ln"></span></p>
+      <p><strong>Midterm:</strong> <span id="g-mid"></span></p>
+      <p><strong>Final:</strong> <span id="g-fin"></span></p>
+    </div>
+
+    <!-- Download button -->
+    <button id="download-grades" class="btn small" hidden>📥 Download My Grades</button>
+
+    <!-- Clickable source -->
+    <div class="grades-src">
+      Source:
+      <a href="http://class-grades-cs.mywebcommunity.org/grades_api.php"
+         target="_blank" rel="noopener noreferrer">
+        http://class-grades-cs.mywebcommunity.org/grades_api.php
+      </a>
+    </div>
+  </section>
+  <!-- ===== end: MY GRADE ===== -->
+
+  <!-- ===== JavaScript: Auto Fetch ===== -->
+  <script>
+  (function () {
+    const API_URL = 'http://class-grades-cs.mywebcommunity.org/grades_api.php';
+    const STUDENT_ID = '2340108';
+
+    const PROXIES = [
+      (u) => 'https://r.jina.ai/http/' + u.replace(/^https?:\/\//,''),
+      (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    ];
+
+    // UI Elements
+    const statusEl = document.getElementById('grade-status');
+    const resultEl = document.getElementById('grade-result');
+    const idEl  = document.getElementById('g-id');
+    const lnEl  = document.getElementById('g-ln');
+    const midEl = document.getElementById('g-mid');
+    const finEl = document.getElementById('g-fin');
+    const dlBtn = document.getElementById('download-grades');
+
+    let lastRecord = null;
+
+    document.addEventListener('DOMContentLoaded', () => loadGrade());
+
+    async function loadGrade(){
+      try {
+        statusEl.textContent = 'Fetching grade...';
+        resultEl.hidden = true;
+        dlBtn.hidden = true;
+
+        const xmlText = await fetchWithFallbacks(API_URL);
+        const rec = pickRecordFromXML(xmlText, STUDENT_ID);
+        if (!rec) { statusEl.textContent = '⚠️ No record found for ID ' + STUDENT_ID; return; }
+
+        idEl.textContent  = rec.id;
+        lnEl.textContent  = rec.ln;
+        midEl.textContent = rec.mid;
+        finEl.textContent = rec.fin;
+
+        lastRecord = rec;
+        resultEl.hidden = false;
+        dlBtn.hidden = false;
+        statusEl.textContent = 'Grade loaded!';
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = 'Failed to fetch. Check connection.';
+      }
+    }
+
+    async function fetchWithFallbacks(url) {
+      try {
+        const r = await fetch(url, { headers: { 'Accept':'application/xml,text/xml,application/json' }});
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return await r.text();
+      } catch (_) {
+        for (const make of PROXIES) {
+          try {
+            const prox = make(url);
+            const r2 = await fetch(prox, { headers: { 'Accept':'text/plain,text/xml,application/xml' }});
+            if (!r2.ok) throw new Error('HTTP ' + r2.status);
+            return await r2.text();
+          } catch (_) {}
+        }
+        throw new Error('All fetch attempts failed');
+      }
+    }
+
+    function pickRecordFromXML(xmlText, idWanted) {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlText, 'application/xml');
+      if (xml.querySelector('parsererror')) return null;
+
+      const students = xml.getElementsByTagName('student');
+      for (let i = 0; i < students.length; i++) {
+        const id  = tag(students[i], 'student_id');
+        if (String(id).trim() === String(idWanted).trim()) {
+          return {
+            id,
+            ln:  tag(students[i], 'student_lastname'),
+            mid: tag(students[i], 'midterm_grade'),
+            fin: tag(students[i], 'final_grade'),
+          };
+        }
+      }
+      return null;
+
+      function tag(parent, t){
+        const el = parent.getElementsByTagName(t)[0];
+        return el ? (el.textContent || '').trim() : '';
+      }
+    }
+
+    dlBtn.addEventListener('click', () => {
+      if (!lastRecord) return;
+      const content =
+`📊 GRADES
+Student ID: ${lastRecord.id}
+Last Name: ${lastRecord.ln}
+Midterm: ${lastRecord.mid}
+Final: ${lastRecord.fin}
+Source: ${API_URL}`;
+      const blob = new Blob([content], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `grades_${lastRecord.id}.txt`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    });
+  })();
+  </script>
+</body>
+</html>
